@@ -14,38 +14,73 @@
  * Иногда промисы от API будут приходить в состояние rejected, (прямо как и API в реальной жизни)
  * Ответ будет приходить в поле {result}
  */
- import Api from '../tools/api';
+import Api from '../tools/api';
+import {
+    compose, 
+    tap,
+    andThen,
+    otherwise,
+    test,
+    partial,
+    ifElse,
+    prop,
+    length,
+    __,
+    concat,
+} from 'ramda';
 
- const api = new Api();
+const api = new Api();
 
- /**
-  * Я – пример, удали меня
-  */
- const wait = time => new Promise(resolve => {
-     setTimeout(resolve, time);
- })
+const URL_NUMBERS = 'https://api.tech/numbers/base';
+const URL_ANIMALS = 'https://animals.tech/';
 
- const processSequence = ({value, writeLog, handleSuccess, handleError}) => {
-     /**
-      * Я – пример, удали меня
-      */
-     writeLog(value);
+const testNumber = test(/^(?=.{2,10}$)^\d+(\.\d+)?$/);
+const square = num => num ** 2;
+const mod = num => num % 3;
 
-     api.get('https://api.tech/numbers/base', {from: 2, to: 10, number: '01011010101'}).then(({result}) => {
-         writeLog(result);
-     });
+const processSequence = ({value, writeLog, handleSuccess, handleError}) => {
+    
+    const handleValidationError = partial(handleError, ['ValidationError']);
+    
+    const sequenceResult = compose(
+        handleSuccess,
+        prop(['result'])
+    )
 
-     wait(2500).then(() => {
-         writeLog('SecondLog')
+    const seqneceAnimal = compose(
+        otherwise(handleError),
+        andThen(sequenceResult),
+        api.get(__, { }),
+        concat(URL_ANIMALS),
+        String,
+        tap(writeLog),
+        mod,
+        tap(writeLog),
+        square,
+        tap(writeLog),
+        length,
+        tap(writeLog),
+        prop(['result']),
+    )
 
-         return wait(1500);
-     }).then(() => {
-         writeLog('ThirdLog');
+    const sequenceBinary = compose(
+        otherwise(handleError),
+        andThen(seqneceAnimal),
+        api.get(URL_NUMBERS),
+        (value) => ({ from: 10, to: 2, number: value }),
+        tap(writeLog),
+        Math.round,
+        Number
+    )
 
-         return wait(400);
-     }).then(() => {
-         handleSuccess('Done');
-     });
- }
+    const validation = ifElse(testNumber, sequenceBinary, handleValidationError)
+
+    const validationSequence = compose(
+        validation,
+        tap(writeLog),
+    )
+
+    validationSequence(value);
+}
 
 export default processSequence;
