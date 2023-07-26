@@ -34,7 +34,7 @@ const api = new Api();
 const URL_NUMBERS = 'https://api.tech/numbers/base';
 const URL_ANIMALS = 'https://animals.tech/';
 
-const testNumber = test(/^(?=.{2,10}$)^\d+(\.\d+)?$/);
+const testNumber = test(/^(?=.{3,9}$)^\d+(\.\d+)?$/);
 const square = num => num ** 2;
 const mod = num => num % 3;
 
@@ -64,9 +64,9 @@ const processSequence = ({value, writeLog, handleSuccess, handleError}) => {
     )
 
     const sequenceBinary = compose(
-        otherwise(handleError),
-        andThen(seqneceAnimal),
-        api.get(URL_NUMBERS),
+        //otherwise(handleError),
+        //andThen(seqneceAnimal),
+        //api.get(URL_NUMBERS),
         (value) => ({ from: 10, to: 2, number: value }),
         tap(writeLog),
         Math.round,
