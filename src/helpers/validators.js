@@ -15,10 +15,8 @@ import {
     values,
     any,
     not,
-    anyPass,
-    both,
+    converge
 } from 'ramda';
-
 
 const propStar = prop('star');
 const propTriangle = prop('triangle');
@@ -33,8 +31,6 @@ const isBlue = equals('blue');
 const isOrange = equals('orange');
 
 const redStar = compose(isRed, propStar);
-const redSquare = compose(isRed, propSquare);
-const redCircle = compose(isRed, propCircle);
 const greenSquare = compose(isGreen, propSquare);
 const greenTriangle = compose(isGreen, propTriangle);
 const whiteTriangle = compose(isWhite, propTriangle);
@@ -45,80 +41,83 @@ const orangeSquare = compose(isOrange, propSquare);
 const isColor = curry((color, shapeProp) => compose(equals(color), shapeProp));
 const allColor = color => allPass(map(isColor(color), shapeProps));
 
-const greenShapes = shape => map(f => f(shape), shapeProps);
+const shapeColors = shapeObj => values(shapeObj);
 
 const atLeastTwoGreen = pipe(
-  greenShapes,
+  shapeColors,
   filter(isGreen),
   length,
   gte(__, 2)
 );
 
-const redShapes = shape => map(f => f(shape), shapeProps);
-const blueShapes = shape => map(f => f(shape), shapeProps);
+const getColors = shape => shapeProps.map(propFunc => propFunc(shape));
+
+const isNotWhite = compose(not, equals('white'));
+const isNotRed = compose(not, equals('red'));
+const isNotRedOrWhite = allPass([isNotWhite, isNotRed]);
+const starIsNotRedOrWhite = compose(isNotRedOrWhite, propStar)
+
+const greenShapesLen = compose(length, filter(isGreen), shapeColors);
+const redShapesLen = compose(length, filter(isRed), shapeColors);
+
+const triangleAndSquareSameColor = converge(equals, [propTriangle, propSquare]);
+const triangleIsNotWhite = compose(isNotWhite, propTriangle);
+const squareIsNotWhite = compose(isNotWhite, propSquare);
 
 const countRedShapes = pipe(
-  redShapes,
+  shapeColors,
   filter(isRed),
   length
 );
 
 const countBlueShapes = pipe(
-  blueShapes,
+  shapeColors,
   filter(isBlue),
   length
 );
 
-const getColors = shape => shapeProps.map(propFunc => propFunc(shape));
-const isNotWhite = compose(not, equals('white'));
+const twoGreenShapes = pipe(
+  greenShapesLen,
+  equals(2),
+);
 
-const redNotTriangle = anyPass([redSquare, redCircle, redStar]);
-const shapeColors = shapeObj => values(shapeObj);
-const greenShapesLen = compose(length, filter(isGreen), shapeColors);
-
-const isNotRedAndNotWhite = compose(not, anyPass([isRed, isWhite]));
-
-const triangleAndSquareSameColor = shapeObj => propTriangle(shapeObj) === propSquare(shapeObj);
-const notWhiteColor = shapeObj => not(isWhite(propTriangle(shapeObj))) && not(isWhite(propSquare(shapeObj)));
+const oneRedShape = pipe(
+  redShapesLen,
+  equals(1),
+);
 
 // 1. Красная звезда, зеленый квадрат, все остальные белые.
 export const validateFieldN1 = allPass([whiteTriangle, whiteCircle, greenSquare, redStar]);
-
-// 4. Синий круг, красная звезда, оранжевый квадрат треугольник любого цвета
-export const validateFieldN4 = allPass([redStar, blueCircle, orangeSquare]);
-
-// 7. Все фигуры оранжевые.
-export const validateFieldN7 = allColor('orange');
-
-// 9. Все фигуры зеленые.
-export const validateFieldN9 = allColor('green');
 
 // 2. Как минимум две фигуры зеленые.
 export const validateFieldN2 = atLeastTwoGreen;
 
 // 3. Количество красных фигур равно кол-ву синих.
-export const validateFieldN3 = shape => equals(countRedShapes(shape), countBlueShapes(shape));
+export const validateFieldN3 = converge(equals, [countRedShapes, countBlueShapes]);
+
+// 4. Синий круг, красная звезда, оранжевый квадрат треугольник любого цвета
+export const validateFieldN4 = allPass([redStar, blueCircle, orangeSquare]);
 
 // 5. Три фигуры одного любого цвета кроме белого (четыре фигуры одного цвета – это тоже true).
 export const validateFieldN5 = pipe(
-    getColors,
-    filter(isNotWhite), 
-    countBy(identity),
-    values,
-    any(gte(__, 3))
+  getColors,
+  filter(isNotWhite), 
+  countBy(identity),
+  values,
+  any(gte(__, 3))
 );
 
 // 6. Ровно две зеленые фигуры (одна из зелёных – это треугольник), плюс одна красная. Четвёртая оставшаяся любого доступного цвета, но не нарушающая первые два условия
-export const validateFieldN6 = shapeObj => {
-    const twoGreenShapes = greenShapesLen(shapeObj) === 2;
-    const greenTrianglePresent = greenTriangle(shapeObj);
-    const redNotTrianglePresent = redNotTriangle(shapeObj);
-    
-    return twoGreenShapes && greenTrianglePresent && redNotTrianglePresent;
-  }
+export const validateFieldN6 = allPass([twoGreenShapes, oneRedShape, greenTriangle]);
+
+// 7. Все фигуры оранжевые.
+export const validateFieldN7 = allColor('orange');
 
 // 8. Не красная и не белая звезда, остальные – любого цвета.
-export const validateFieldN8 = compose(isNotRedAndNotWhite, propStar);;
+export const validateFieldN8 = starIsNotRedOrWhite;
+
+// 9. Все фигуры зеленые.
+export const validateFieldN9 = allColor('green');
 
 // 10. Треугольник и квадрат одного цвета (не белого), остальные – любого цвета
-export const validateFieldN10 = shapeObj => both(triangleAndSquareSameColor, notWhiteColor)(shapeObj);
+export const validateFieldN10 = allPass([triangleAndSquareSameColor, triangleIsNotWhite, squareIsNotWhite]);
