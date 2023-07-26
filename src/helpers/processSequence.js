@@ -64,9 +64,9 @@ const processSequence = ({value, writeLog, handleSuccess, handleError}) => {
     )
 
     const sequenceBinary = compose(
-        //otherwise(handleError),
-        //andThen(seqneceAnimal),
-        //api.get(URL_NUMBERS),
+        otherwise(handleError),
+        andThen(seqneceAnimal),
+        api.get(URL_NUMBERS),
         (value) => ({ from: 10, to: 2, number: value }),
         tap(writeLog),
         Math.round,
